@@ -10,3 +10,5 @@ lib/
 *.so
 *.dylib
 *.exe
+vcpkg_installed/
+CMakeUserPresets.json

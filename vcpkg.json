@@ -1,0 +1,10 @@
+{
+  "name": "spectogram",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "name": "sfml",
+      "features": [ "graphics", "window" ]
+    }
+  ]
+}
