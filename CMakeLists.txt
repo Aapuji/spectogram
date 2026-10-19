@@ -1,5 +1,7 @@
 # Setup the basic CMake environment
 cmake_minimum_required(VERSION 3.20)
+set(VCPKG_APPLOCAL_DEPS ON)
+
 project(Spectogram 
     VERSION 1.0.0 
     LANGUAGES CXX
@@ -29,8 +31,13 @@ target_include_directories(spectogram_lib
 )
 
 # Get SFML
-set(SFML_STATIC_LIBRARIES ON)
-find_package(SFML 3.0 COMPONENTS Graphics Window System CONFIG REQUIRED)
+find_package(SFML COMPONENTS Graphics Window System CONFIG REQUIRED)
+
+# target_link_libraries(spectogram_lib PUBLIC 
+#     SFML::Graphics 
+#     SFML::Window 
+#     SFML::System
+# )
 
 # Define the executable application entry point
 add_executable(spectogram 
@@ -41,7 +48,15 @@ add_executable(spectogram
 target_link_libraries(spectogram 
     PRIVATE 
         spectogram_lib
-        SFML::Graphics
-        SFML::Window
+        SFML::Graphics 
+        SFML::Window 
         SFML::System
+)
+
+# Custom post-build command to copy SFML DLLs when app-local tool fails
+add_custom_command(TARGET spectogram POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_RUNTIME_DLLS:spectogram>
+        $<TARGET_FILE_DIR:spectogram>
+    COMMAND_EXPAND_LISTS
 )
