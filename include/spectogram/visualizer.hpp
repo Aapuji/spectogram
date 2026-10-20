@@ -1,13 +1,18 @@
-// #pragma once
+#pragma once
 
-// #include <SFML/Window.hpp>
-// #include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>
 
-// class Visualizer {
-// private:
-//     sf::Window m_window;
+#include "config.hpp"
 
-// public:
-//     Visualizer();
-//     ~Visualizer();
-// };
+class Visualizer {
+private:
+    sf::RenderWindow m_window;
+
+public:
+    /// @brief  Initializes the window's properties.
+    /// @return True if the window was successfully initialized. False if not.
+    bool init(const Config& config);
+
+    /// @brief Constitutes the window's event loop.
+    void loop();
+};

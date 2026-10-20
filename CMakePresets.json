@@ -4,14 +4,25 @@
     {
       "name": "vcpkg",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "environment": {
+        "VCPKG_DEFAULT_HOST_TRIPLET": "x64-mingw-static"
+      },
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_MANIFEST_MODE": true,
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic",
+        "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
+        "VCPKG_HOST_TRIPLET": "x64-mingw-static",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
         "CMAKE_MAKE_PROGRAM": "C:/ProgramData/chocolatey/bin/ninja.exe"
       }
     }
+  ],
+  "buildPresets": [
+    {
+      "name": "vcpkg",
+      "configurePreset": "vcpkg"
+    }
   ]
 }
+

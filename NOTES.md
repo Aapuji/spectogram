@@ -18,8 +18,8 @@ Need to put all feature information in `vcpkg.json`. Then use `vcpkg install` in
 Then
 ```sh
 cmake --preset vcpkg # only if CMakeLists or other stuff has changed
-cmake --build build
-./build/spectogram
+cmake --build --preset vcpkg
+./spectogram
 ```
 # Experiences with `cmake`, `vcpkg`
 Make sure `$env:VCPKG_ROOT` is set.
@@ -29,3 +29,5 @@ Once I finally got it to compile, it still wasn't linking. The status code is `-
 Solution:
 - Unified the Toolchain: Switched the compiler in `CMakePresets.json` to the modern Universal C Runtime path to match the `x64-mingw-dynamic` `vcpkg` triplet.
 - Explicit Linking: Updated `CMakeLists.txt` to explicitly link `SFML` components directly to the executable target (`spectogram`) rather than relying solely on the static library (`spectogram_lib`).
+# Fixing that stuff
+That was actually horrible. But now instead of dynamically linking, it's going to be statically linked. 
