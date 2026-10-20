@@ -31,3 +31,5 @@ Solution:
 - Explicit Linking: Updated `CMakeLists.txt` to explicitly link `SFML` components directly to the executable target (`spectogram`) rather than relying solely on the static library (`spectogram_lib`).
 # Fixing that stuff
 That was actually horrible. But now instead of dynamically linking, it's going to be statically linked. 
+
+Took 2 whole days to finally be able to start to even write some code.
