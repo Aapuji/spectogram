@@ -3,5 +3,6 @@
 #include <SFML/Window.hpp>
 
 struct Config {
-    sf::VideoMode initial_winsize = sf::VideoMode::getDesktopMode(); // default fullscreen
+    sf::VideoMode initial_winsize = sf::VideoMode::getDesktopMode();
+    bool auto_maximize = true;
 };
