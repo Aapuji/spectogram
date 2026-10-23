@@ -33,3 +33,5 @@ Solution:
 That was actually horrible. But now instead of dynamically linking, it's going to be statically linked. 
 
 Took 2 whole days to finally be able to start to even write some code.
+# Designing Layout
+There are no layout classes, so I need to make them myself.
