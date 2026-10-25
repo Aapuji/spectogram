@@ -1,14 +1,11 @@
 #include <iostream>
 
-#include <spectogram/config.hpp>
 #include <spectogram/visualizer.hpp>
 
-int main(int argc, char **argv) {
+int main() {
     Config config{};
-    Visualizer vis;
-    
+    Visualizer vis{config};
+
     vis.init(config);
     vis.loop();
-    
-    std::cout << "DONE!" << std::endl;
 }

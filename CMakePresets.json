@@ -1,8 +1,8 @@
 {
-  "version": 2,
+  "version": 3,
   "configurePresets": [
     {
-      "name": "vcpkg",
+      "name": "base",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "environment": {
@@ -16,12 +16,34 @@
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
         "CMAKE_MAKE_PROGRAM": "C:/ProgramData/chocolatey/bin/ninja.exe"
       }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
     {
-      "name": "vcpkg",
-      "configurePreset": "vcpkg"
+      "name": "debug",
+      "configurePreset": "debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "configuration": "Release"
     }
   ]
 }

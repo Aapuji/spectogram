@@ -35,3 +35,15 @@ That was actually horrible. But now instead of dynamically linking, it's going t
 Took 2 whole days to finally be able to start to even write some code.
 # Designing Layout
 There are no layout classes, so I need to make them myself.
+
+I decided to add `TGUI` for layouts and gui. 
+## Getting resizing while dragging.
+I followed the normal and suggested procedure of using the game event loop and handling events there, such as a resize event. However the problem is that it would only rerender when I let go of dragging the window. 
+
+After some research, and Claude :), it turns out for both Windows and Mac when a window is being resized, they hijack the main thread and only return control back afterwards. Meaning a resize event is only sent after it is finished. On linux OTOH, it continuously sends resize events as you drag it.
+
+This meant that I had to write platform-specific code to interact with these elements. Claude excells here, and gave a working answer quickly (at least for windows), as I have no knowledge of windows internals. Nevertheless, I did do some digging into this, mainly for windows because delving into one platform-specific api is already alot, so three is way too much to do. So I don't actually know if the mac or linux code works, will need to test that later, but probably after I finish the project. 
+
+But the key idea is realizing that my rendering code is good, but wasn't triggering when it needed to, so hence why I needed to look deeper.
+
+Also note, thanks to claude again, is that my solution actually depends on an internal implementation detail, because SFML tracks continuous resizes while dragging and caches the size until its done, and then emits a resize event. Specifically it checks if it is mid-drag by checking a flag set by `WM_ENTERSIZEMOVE` flag which is cleared by `WM_EXITSIZEMOVE`. When it gets cleared, then it emits a resize event. So what I'm doing is sending a fake `WM_EXITSIZEMOVE` and then a fake `WM_ENTERSIZEMOVE` again so that it keeps queuing all drag changes. But this is really an internal detail I think, so yeah. Current version of SFML being used is 3.0.2, which I am now requiring to be exact. 

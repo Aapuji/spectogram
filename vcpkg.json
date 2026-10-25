@@ -5,6 +5,10 @@
     {
       "name": "sfml",
       "features": [ "graphics", "window" ]
+    },
+    {
+      "name": "tgui",
+      "features": [ "sfml" ]
     }
   ]
 }

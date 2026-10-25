@@ -1,7 +1,7 @@
 # Setup the basic CMake environment
 cmake_minimum_required(VERSION 3.20)
 
-project(Spectogram 
+project(spectogram 
     VERSION 1.0.0 
     LANGUAGES CXX
 )
@@ -16,6 +16,7 @@ add_library(spectogram_lib STATIC
     src/audio_capture.cpp
     src/processor.cpp
     src/visualizer.cpp
+    src/canvas.cpp
 )
 
 # Bind the header search paths to your library target
@@ -26,16 +27,30 @@ target_include_directories(spectogram_lib
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
+# Do platform specific stuff
+if(WIN32)
+    target_sources(spectogram_lib PRIVATE src/platform/win32.cpp)
+elseif(APPLE)
+    target_sources(spectogram_lib PRIVATE src/platform/macos.mm)
+    target_link_libraries(spectogram_lib PUBLIC "-framework Cocoa")
+else()
+    target_sources(spectogram_lib PRIVATE src/platform/linux.cpp)
+    target_link_libraries(spectogram_lib PUBLIC X11)
+endif()
+
+
 # Crucial for static SFML: Tells CMake to use static targets
 set(SFML_STATIC_LIBRARIES TRUE)
 
-# Get SFML
-find_package(SFML 3.0 COMPONENTS Graphics Window System CONFIG REQUIRED)
+# Get SFML and TGUI
+find_package(SFML 3.0.2 COMPONENTS Graphics Window System CONFIG REQUIRED EXACT)
+find_package(TGUI 1 CONFIG REQUIRED)
 
 target_link_libraries(spectogram_lib PUBLIC 
     SFML::Graphics 
     SFML::Window 
     SFML::System
+    TGUI::TGUI
 )
 
 # Tell CMake to output the final executable to your main project root directory

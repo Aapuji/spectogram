@@ -1,114 +1,136 @@
 #include <spectogram/visualizer.hpp>
+#include <spectogram/platform.hpp>
 
-#include <SFML/Window.hpp>
-#include <SFML/Graphics.hpp>
-
-// Include native OS headers
-#if defined(_WIN32)
-    #include <windows.h>
-#elif defined(__linux__)
-    // Requires linking against X11: -lX11
-    #include <X11/Xlib.h>
-    #include <X11/Xatom.h>
-#elif defined(__APPLE__)
-    // Requires an Objective-C++ file (.mm) or linking Cocoa
-    extern void maximizeMacWindow(sf::WindowHandle handle);
-#endif
-
-namespace {
-    inline constexpr float UBAR_HEIGHT = 50.f;
-    inline constexpr float SBAR_HEIGHT = 50.f;
-}
-
-void Visualizer::maximize() {
-    sf::WindowHandle handle = m_window.getNativeHandle();
-
-    #if defined(_WIN32)
-        // Windows API native maximize
-        ShowWindow(handle, SW_MAXIMIZE);
-    #elif defined(__linux__)
-        // X11 native maximize
-        Display* display = XOpenDisplay(nullptr);
-        if (display) {
-            Atom wmState = XInternAtom(display, "_NET_WM_STATE", False);
-            Atom wmMaxHorz = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-            Atom wmMaxVert = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_VERT", False);
-
-            XEvent xev;
-            xev.type = ClientMessage;
-            xev.xclient.window = handle;
-            xev.xclient.message_type = wmState;
-            xev.xclient.format = 32;
-            xev.xclient.data.l[0] = 1; // 1 = _NET_WM_STATE_ADD
-            xev.xclient.data.l[1] = wmMaxHorz;
-            xev.xclient.data.l[2] = wmMaxVert;
-            xev.xclient.data.l[3] = 1;
-
-            XSendEvent(display, DefaultRootWindow(display), False,
-                    SubstructureNotifyMask | SubstructureRedirectMask, &xev);
-            XFlush(display);
-            XCloseDisplay(display);
-        }
-    #elif defined(__APPLE__)
-        // Call out to macOS Cocoa functionality if needed
-        maximizeMacWindow(handle);
-    #endif
-}
-
-bool Visualizer::init(const Config& config) {
+Visualizer::Visualizer(const Config& config) {
     m_window.create(config.initial_winsize, "Spectogram");
+    m_gui.setTarget(m_window);
+    
+    m_is_sidebar_open = !config.collapse_sidebar;
+    m_sidebar_width = config.sidebar_width;
+    m_statusbar_height = config.statusbar_height;
+}
 
+void Visualizer::init(const Config& config) {
     if (config.auto_maximize)
         maximize();
+    
+    m_statusbar = tgui::Label::create();
+    m_statusbar->setText("Text tbd");
+    m_statusbar->setPosition({0, tgui::bindHeight(m_gui) - m_statusbar_height});
+    m_statusbar->setSize({tgui::bindWidth(m_gui), m_statusbar_height});
+    m_gui.add(m_statusbar);
+
+    m_sidebar = tgui::Panel::create();
+    m_sidebar->setPosition({tgui::bindWidth(m_gui) - m_sidebar_width, 0});
+    m_sidebar->setSize({m_sidebar_width, tgui::bindHeight(m_gui) - tgui::bindHeight(m_statusbar)});
+    m_gui.add(m_sidebar);
+
+    m_sidebar_toggle = tgui::Button::create();
+    m_sidebar_toggle->setSize(static_cast<tgui::Layout2d>(config.sidebar_toggle_size));
+    m_sidebar_toggle->onPress(&Visualizer::toggle_sidebar, this);
+    m_gui.add(m_sidebar_toggle);
+
+    platform::install_live_resize_hook(m_window.getNativeHandle(), [this] { on_native_resize(); });
+    m_ready = true;
 
     update_layout();
-    return true;
+}
+
+void Visualizer::draw_frame() {
+    m_window.clear(sf::Color::Black);
+    render();
+    m_window.display();
 }
 
 void Visualizer::loop() {
     while (m_window.isOpen()) {
         while (const std::optional event = m_window.pollEvent()) {
-            // close window
             if (event->is<sf::Event::Closed>())
                 m_window.close();
             
-            // resize
-            if (const auto* resized = event->getIf<sf::Event::Resized>()) {
-                sf::FloatRect visible_area{{0.f, 0.f}, sf::Vector2f(resized->size)};
-                m_window.setView(sf::View(visible_area));
-                update_layout();
-            }
-
-            // key presses
-            if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
-                // Quit
-                if (key->code == sf::Keyboard::Key::Q && key->control)
-                    m_window.close();
-            }
+            handle_event(*event);
         }
 
-        m_window.clear(sf::Color::Black);
-        draw();
-
-        m_window.display();
+        draw_frame();
     }
 }
 
-void SpectogramCanvas::update_layout(sf::Vector2f size, sf::Vector2f winsize) {
-    const sf::Vector2f pos = {0, 0};
-    m_bg.setPosition(pos);
-    m_bg.setSize(size);
-    m_bg.setFillColor(sf::Color::Yellow);
-
-    m_view = sf::View(sf::FloatRect(pos, size));
-    m_view.setViewport(sf::FloatRect(
-        {pos.x / winsize.x, pos.y / winsize.y},
-        {size.x / winsize.x, size.y / winsize.y}
-    ));
+void Visualizer::render() {
+    m_canvas.draw(m_window);
+    m_gui.draw();
 }
 
-void StatusBar::update_layout(sf::Vector2f winsize) {
-    m_bg.setPosition({0, winsize.y - SBAR_HEIGHT});
-    m_bg.setSize({winsize.x, SBAR_HEIGHT});
-    m_bg.setFillColor(sf::Color::Red);
+void Visualizer::toggle_sidebar() {
+    m_is_sidebar_open  = !m_is_sidebar_open;
+    m_sidebar->setVisible(m_is_sidebar_open);
+    
+    update_layout();
+}
+
+void Visualizer::update_layout() {
+    const sf::Vector2u winsize = m_window.getSize();
+
+    const float sidebar_width = m_is_sidebar_open ? m_sidebar_width : 0.f;
+    const float winwidth = static_cast<float>(winsize.x);
+    const float winheight = static_cast<float>(winsize.y);
+
+    m_sidebar->setPosition({tgui::bindWidth(m_gui) - sidebar_width, 0});
+    m_sidebar->setSize({sidebar_width, tgui::bindHeight(m_gui) - tgui::bindHeight(m_statusbar)});
+    
+    const tgui::Layout2d sidebar_toggle_offset = {10.f, 10.f};
+    m_sidebar_toggle->setPosition(tgui::Layout2d{tgui::bindLeft(m_sidebar), tgui::bindTop(m_sidebar)} + sidebar_toggle_offset);
+    
+    m_statusbar->setPosition({0, tgui::bindHeight(m_gui) - m_statusbar_height});
+    m_statusbar->setSize({tgui::bindWidth(m_gui), m_statusbar_height});
+
+    const tgui::Layout2d canvas_size = {tgui::bindLeft(m_sidebar), tgui::bindTop(m_statusbar)};
+    m_canvas.update_layout({0, 0}, canvas_size.getValue());
+}
+
+void Visualizer::handle_event(const sf::Event& event) {
+    m_gui.handleEvent(event);
+
+    if (const auto* resized = event.getIf<sf::Event::Resized>()) {
+        sf::Vector2f new_size = sf::Vector2f(resized->size);
+        
+        // Match standard SFML render target mapping
+        m_window.setView(sf::View(sf::FloatRect({0.f, 0.f}, new_size)));
+        
+        // CRITICAL: Force TGUI internal layout rules to evaluate against the live window context
+        // m_gui.setView(sf::View(sf::FloatRect({0.f, 0.f}, new_size)));
+        
+        update_layout();
+    }
+}
+
+void Visualizer::maximize() {
+    platform::maximize_window(m_window.getNativeHandle());
+}
+
+void Visualizer::on_native_resize() {
+    if (!m_ready || m_in_native_resize || !m_window.isOpen())
+        return;
+
+    m_in_native_resize = true;
+
+    // The hook just made SFML queue a Resized event, so this pops it without pumping messages
+    while (const std::optional event = m_window.pollEvent()) {
+        if (event->is<sf::Event::Closed>())
+            m_window.close();
+
+        handle_event(*event);
+
+        if (event->is<sf::Event::Resized>())
+            break;
+    }
+
+    if (m_window.isOpen())
+        draw_frame();
+
+    m_in_native_resize = false;
+}
+
+Visualizer::~Visualizer() {
+    if (m_window.isOpen())
+        platform::remove_live_resize_hook(m_window.getNativeHandle());
 }

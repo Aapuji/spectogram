@@ -1,62 +1,45 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <TGUI/TGUI.hpp>
+#include <TGUI/Backend/SFML-Graphics.hpp>
 
+#include "canvas.hpp"
 #include "config.hpp"
-
-class StatusBar {
-private:
-    sf::RectangleShape m_bg;
-public:
-    void update_layout(sf::Vector2f winsize);
-    
-    void draw(sf::RenderWindow& win) {
-        win.draw(m_bg);
-    }
-
-    sf::Vector2f get_size() {
-        return m_bg.getSize();
-    }
-};
-
-class SpectogramCanvas {
-private:
-    sf::View m_view;
-    sf::RectangleShape m_bg;
-public:
-    void update_layout(sf::Vector2f size, sf::Vector2f winsize);
-
-    void draw(sf::RenderWindow& win) {
-        win.draw(m_bg);
-        // win.setView(m_view);
-    }
-};
 
 class Visualizer {
 private:
     sf::RenderWindow m_window;
     SpectogramCanvas m_canvas;
-    StatusBar m_sbar;
 
+    tgui::Gui m_gui;
+    tgui::Panel::Ptr m_sidebar;
+    tgui::Button::Ptr m_sidebar_toggle;
+    tgui::Label::Ptr m_statusbar;
+    bool m_is_sidebar_open;
+    float m_sidebar_width;
+    float m_statusbar_height;
+    bool m_ready = false; // true once init() has built all widgets
+    bool m_in_native_resize = false;
+
+    void draw_frame();
     void maximize();
-    void update_layout() {
-        const sf::Vector2f winsize = static_cast<sf::Vector2f>(m_window.getSize());
-
-        m_sbar.update_layout(winsize);
-        const float bottom = m_sbar.get_size().y;
-
-        m_canvas.update_layout({winsize.x, winsize.y - bottom}, winsize);
-    }
-    void draw() {
-        m_sbar.draw(m_window);
-        m_canvas.draw(m_window);
-    }
-
+    void update_layout();
+    void render();
+    void toggle_sidebar();
+    void handle_event(const sf::Event& event);
 public:
-    /// @brief  Initializes the window's properties.
-    /// @return True if the window was successfully initialized. False if not.
-    bool init(const Config& config);
+    Visualizer(const Config& config);
+    ~Visualizer();
 
-    /// @brief Constitutes the window's event loop.
+    Visualizer(const Visualizer&) = delete;
+    Visualizer& operator=(const Visualizer&) = delete;
+
+    void init(const Config& config);
     void loop();
+
+    /// @brief Called from the native window proc while the user drags a resize edge. 
+    /// 
+    /// Needed because there isn't a way to cross-platform render/change layout while the window is resizing. Only afterwards.
+    void on_native_resize();
 };
