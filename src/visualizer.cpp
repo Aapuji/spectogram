@@ -2,12 +2,14 @@
 #include <spectogram/platform.hpp>
 
 Visualizer::Visualizer(const Config& config) {
-    m_window.create(config.initial_winsize, "Spectogram");
+    m_window.create(sf::VideoMode(config.initial_winsize), "Spectogram");
+    m_window.setMinimumSize(config.min_winsize);
     m_gui.setTarget(m_window);
     
     m_is_sidebar_open = !config.collapse_sidebar;
     m_sidebar_width = config.sidebar_width;
     m_statusbar_height = config.statusbar_height;
+    m_no_sidebar_winsize = config.no_sidebar_winsize;
 }
 
 void Visualizer::init(const Config& config) {
@@ -60,13 +62,6 @@ void Visualizer::render() {
     m_gui.draw();
 }
 
-void Visualizer::toggle_sidebar() {
-    m_is_sidebar_open  = !m_is_sidebar_open;
-    m_sidebar->setVisible(m_is_sidebar_open);
-    
-    update_layout();
-}
-
 void Visualizer::update_layout() {
     const sf::Vector2u winsize = m_window.getSize();
 
@@ -77,7 +72,7 @@ void Visualizer::update_layout() {
     m_sidebar->setPosition({tgui::bindWidth(m_gui) - sidebar_width, 0});
     m_sidebar->setSize({sidebar_width, tgui::bindHeight(m_gui) - tgui::bindHeight(m_statusbar)});
     
-    const tgui::Layout2d sidebar_toggle_offset = {10.f, 10.f};
+    const tgui::Layout2d sidebar_toggle_offset = {m_is_sidebar_open ? 10.f : -tgui::bindWidth(m_sidebar_toggle) - 10.f, 10.f};
     m_sidebar_toggle->setPosition(tgui::Layout2d{tgui::bindLeft(m_sidebar), tgui::bindTop(m_sidebar)} + sidebar_toggle_offset);
     
     m_statusbar->setPosition({0, tgui::bindHeight(m_gui) - m_statusbar_height});
@@ -91,16 +86,38 @@ void Visualizer::handle_event(const sf::Event& event) {
     m_gui.handleEvent(event);
 
     if (const auto* resized = event.getIf<sf::Event::Resized>()) {
-        sf::Vector2f new_size = sf::Vector2f(resized->size);
+        const auto new_size = resized->size;
+
+        if (new_size.x <= m_no_sidebar_winsize.x)
+            disable_sidebar();
+        else
+            enable_sidebar();
         
-        // Match standard SFML render target mapping
-        m_window.setView(sf::View(sf::FloatRect({0.f, 0.f}, new_size)));
-        
-        // CRITICAL: Force TGUI internal layout rules to evaluate against the live window context
-        // m_gui.setView(sf::View(sf::FloatRect({0.f, 0.f}, new_size)));
+        m_window.setView(sf::View(sf::FloatRect({0.f, 0.f}, sf::Vector2f(new_size))));
         
         update_layout();
     }
+}
+
+void Visualizer::toggle_sidebar() {
+    m_is_sidebar_open  = !m_is_sidebar_open;
+    m_sidebar->setVisible(m_is_sidebar_open);
+    
+    update_layout();
+}
+
+void Visualizer::disable_sidebar() {
+    m_is_sidebar_hidden = true;
+    m_sidebar->setVisible(false);
+    m_sidebar_toggle->setVisible(false);
+}
+
+void Visualizer::enable_sidebar() {
+    m_is_sidebar_hidden = false;
+    m_sidebar_toggle->setVisible(true);
+
+    if (m_is_sidebar_open)
+        m_sidebar->setVisible(true);
 }
 
 void Visualizer::maximize() {

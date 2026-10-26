@@ -21,6 +21,8 @@ private:
     float m_statusbar_height;
     bool m_ready = false; // true once init() has built all widgets
     bool m_in_native_resize = false;
+    sf::Vector2u m_no_sidebar_winsize;
+    bool m_is_sidebar_hidden = false;
 
     void draw_frame();
     void maximize();
@@ -28,12 +30,17 @@ private:
     void render();
     void toggle_sidebar();
     void handle_event(const sf::Event& event);
+    void disable_sidebar();
+    void enable_sidebar();
 public:
     Visualizer(const Config& config);
     ~Visualizer();
 
     Visualizer(const Visualizer&) = delete;
     Visualizer& operator=(const Visualizer&) = delete;
+
+    Visualizer(Visualizer&& other) noexcept = default;
+    Visualizer& operator=(Visualizer&& other) noexcept = default;
 
     void init(const Config& config);
     void loop();
