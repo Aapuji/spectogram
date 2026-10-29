@@ -1,5 +1,8 @@
 #pragma once
 
+#include <complex>
+#include <vector>
+
 #include <SFML/Graphics.hpp>
 #include <TGUI/TGUI.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
@@ -32,6 +35,14 @@ private:
     void handle_event(const sf::Event& event);
     void disable_sidebar();
     void enable_sidebar();
+    
+    /// @brief Called from the native window proc while the user drags a resize edge. 
+    /// 
+    /// Needed because there isn't a way to cross-platform render/change layout while the window is resizing. Only afterwards.
+    void on_native_resize();
+
+    void update_canvas(std::vector<std::complex<double>>& data);
+    std::vector<uint8_t> assign_colors(std::vector<std::complex<double>>& data);
 public:
     Visualizer(const Config& config);
     ~Visualizer();
@@ -44,9 +55,4 @@ public:
 
     void init(const Config& config);
     void loop();
-
-    /// @brief Called from the native window proc while the user drags a resize edge. 
-    /// 
-    /// Needed because there isn't a way to cross-platform render/change layout while the window is resizing. Only afterwards.
-    void on_native_resize();
 };

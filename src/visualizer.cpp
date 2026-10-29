@@ -1,7 +1,7 @@
 #include <spectogram/visualizer.hpp>
 #include <spectogram/platform.hpp>
 
-Visualizer::Visualizer(const Config& config) {
+Visualizer::Visualizer(const Config& config) : m_canvas{config.spectogram_size} {
     m_window.create(sf::VideoMode(config.initial_winsize), "Spectogram");
     m_window.setMinimumSize(config.min_winsize);
     m_gui.setTarget(m_window);
@@ -27,6 +27,10 @@ void Visualizer::init(const Config& config) {
     m_sidebar->setSize({m_sidebar_width, tgui::bindHeight(m_gui) - tgui::bindHeight(m_statusbar)});
     m_gui.add(m_sidebar);
 
+    m_canvas.widget()->setPosition({0, 0});
+    m_canvas.widget()->setSize({tgui::bindLeft(m_sidebar), tgui::bindTop(m_statusbar)});
+    m_gui.add(m_canvas.widget());
+
     m_sidebar_toggle = tgui::Button::create();
     m_sidebar_toggle->setSize(static_cast<tgui::Layout2d>(config.sidebar_toggle_size));
     m_sidebar_toggle->onPress(&Visualizer::toggle_sidebar, this);
@@ -36,12 +40,6 @@ void Visualizer::init(const Config& config) {
     m_ready = true;
 
     update_layout();
-}
-
-void Visualizer::draw_frame() {
-    m_window.clear(sf::Color::Black);
-    render();
-    m_window.display();
 }
 
 void Visualizer::loop() {
@@ -57,29 +55,38 @@ void Visualizer::loop() {
     }
 }
 
+void Visualizer::draw_frame() {
+    m_window.clear(sf::Color::Black);
+    render();
+    m_window.display();
+}
+
 void Visualizer::render() {
-    m_canvas.draw(m_window);
+    std::vector<std::complex<double>> dummy_data{};
+    update_canvas(dummy_data);
+    m_canvas.draw();
     m_gui.draw();
 }
 
 void Visualizer::update_layout() {
     const sf::Vector2u winsize = m_window.getSize();
 
-    const float sidebar_width = m_is_sidebar_open ? m_sidebar_width : 0.f;
-    const float winwidth = static_cast<float>(winsize.x);
-    const float winheight = static_cast<float>(winsize.y);
+    const float sidebar_width = m_is_sidebar_open && !m_is_sidebar_hidden ? m_sidebar_width : 0.f;
 
     m_sidebar->setPosition({tgui::bindWidth(m_gui) - sidebar_width, 0});
     m_sidebar->setSize({sidebar_width, tgui::bindHeight(m_gui) - tgui::bindHeight(m_statusbar)});
     
+    m_canvas.widget()->setPosition({0, 0});
+    m_canvas.widget()->setSize({tgui::bindLeft(m_sidebar), tgui::bindTop(m_statusbar)});
+
+    // const tgui::Layout2d canvas_size = {tgui::bindLeft(m_sidebar), tgui::bindTop(m_statusbar)};
+    m_canvas.update_layout({0, 0}, m_canvas.widget()->getSize());
+
     const tgui::Layout2d sidebar_toggle_offset = {m_is_sidebar_open ? 10.f : -tgui::bindWidth(m_sidebar_toggle) - 10.f, 10.f};
     m_sidebar_toggle->setPosition(tgui::Layout2d{tgui::bindLeft(m_sidebar), tgui::bindTop(m_sidebar)} + sidebar_toggle_offset);
     
     m_statusbar->setPosition({0, tgui::bindHeight(m_gui) - m_statusbar_height});
     m_statusbar->setSize({tgui::bindWidth(m_gui), m_statusbar_height});
-
-    const tgui::Layout2d canvas_size = {tgui::bindLeft(m_sidebar), tgui::bindTop(m_statusbar)};
-    m_canvas.update_layout({0, 0}, canvas_size.getValue());
 }
 
 void Visualizer::handle_event(const sf::Event& event) {
@@ -110,6 +117,8 @@ void Visualizer::disable_sidebar() {
     m_is_sidebar_hidden = true;
     m_sidebar->setVisible(false);
     m_sidebar_toggle->setVisible(false);
+
+    update_layout();
 }
 
 void Visualizer::enable_sidebar() {
@@ -145,6 +154,16 @@ void Visualizer::on_native_resize() {
         draw_frame();
 
     m_in_native_resize = false;
+}
+
+void Visualizer::update_canvas(std::vector<std::complex<double>>& data) {
+    auto colors = assign_colors(data);
+    
+    m_canvas.update_plot(colors);
+}
+
+std::vector<uint8_t> Visualizer::assign_colors(std::vector<std::complex<double>>& data) {
+    return std::vector<uint8_t>{0, 1};
 }
 
 Visualizer::~Visualizer() {
